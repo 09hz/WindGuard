@@ -2,7 +2,7 @@ name: Full-Stack CI/CD Deployment
 
 on:
   push:
-    branches: [ main ]
+    branches: [ deploy_test ]
 
 jobs:
   build-and-deploy:
