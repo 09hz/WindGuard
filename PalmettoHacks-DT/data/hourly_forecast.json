@@ -1,0 +1,151 @@
+{
+  "data_status": "SIMULATED DEMO DATA",
+  "generated_at_utc": "2026-10-10T18:27:32+00:00",
+  "random_seed": 20261010,
+  "hours": [
+    {
+      "timestamp_utc": "2026-10-10T19:00:00+00:00",
+      "wind_speed_m_s": 8.3,
+      "gust_speed_m_s": 10.1,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-10T20:00:00+00:00",
+      "wind_speed_m_s": 6.9,
+      "gust_speed_m_s": 8.8,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-10T21:00:00+00:00",
+      "wind_speed_m_s": 8.5,
+      "gust_speed_m_s": 10.9,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-10T22:00:00+00:00",
+      "wind_speed_m_s": 8.0,
+      "gust_speed_m_s": 10.7,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-10T23:00:00+00:00",
+      "wind_speed_m_s": 9.1,
+      "gust_speed_m_s": 11.7,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T00:00:00+00:00",
+      "wind_speed_m_s": 9.8,
+      "gust_speed_m_s": 11.1,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T01:00:00+00:00",
+      "wind_speed_m_s": 9.4,
+      "gust_speed_m_s": 11.1,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T02:00:00+00:00",
+      "wind_speed_m_s": 10.3,
+      "gust_speed_m_s": 10.7,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T03:00:00+00:00",
+      "wind_speed_m_s": 9.9,
+      "gust_speed_m_s": 11.5,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T04:00:00+00:00",
+      "wind_speed_m_s": 11.7,
+      "gust_speed_m_s": 12.7,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T05:00:00+00:00",
+      "wind_speed_m_s": 10.5,
+      "gust_speed_m_s": 12.7,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T06:00:00+00:00",
+      "wind_speed_m_s": 10.7,
+      "gust_speed_m_s": 11.3,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T07:00:00+00:00",
+      "wind_speed_m_s": 11.5,
+      "gust_speed_m_s": 13.8,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T08:00:00+00:00",
+      "wind_speed_m_s": 11.4,
+      "gust_speed_m_s": 13.1,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T09:00:00+00:00",
+      "wind_speed_m_s": 11.1,
+      "gust_speed_m_s": 12.4,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T10:00:00+00:00",
+      "wind_speed_m_s": 10.1,
+      "gust_speed_m_s": 10.9,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T11:00:00+00:00",
+      "wind_speed_m_s": 10.6,
+      "gust_speed_m_s": 11.5,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T12:00:00+00:00",
+      "wind_speed_m_s": 8.9,
+      "gust_speed_m_s": 11.8,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T13:00:00+00:00",
+      "wind_speed_m_s": 8.9,
+      "gust_speed_m_s": 9.5,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T14:00:00+00:00",
+      "wind_speed_m_s": 8.6,
+      "gust_speed_m_s": 9.6,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T15:00:00+00:00",
+      "wind_speed_m_s": 7.0,
+      "gust_speed_m_s": 7.8,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T16:00:00+00:00",
+      "wind_speed_m_s": 8.3,
+      "gust_speed_m_s": 11.0,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T17:00:00+00:00",
+      "wind_speed_m_s": 8.2,
+      "gust_speed_m_s": 9.9,
+      "data_status": "SIMULATED DEMO DATA"
+    },
+    {
+      "timestamp_utc": "2026-10-11T18:00:00+00:00",
+      "wind_speed_m_s": 6.5,
+      "gust_speed_m_s": 9.0,
+      "data_status": "SIMULATED DEMO DATA"
+    }
+  ]
+}

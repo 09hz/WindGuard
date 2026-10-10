@@ -1,0 +1,62 @@
+! WindGuard Twin 10-turbine radial feeder demonstration.
+! Illustrative low-voltage distribution model only; not a utility interconnection study.
+Clear
+New Circuit.WindGuard basekv=69 pu=1 phases=3 bus1=sourcebus frequency=60
+New Transformer.Substation phases=3 windings=2 buses=[sourcebus.1.2.3 substation.1.2.3] conns=[delta wye] kvs=[69 12.47] kvas=[30000 30000] XHL=8 %Rs=[0.5 0.5]
+
+New Line.Feeder01 phases=3 bus1=substation.1.2.3 bus2=collector01.1.2.3 length=0.25 units=km r1=0.20 x1=0.30 r0=0.40 x0=0.90 c1=0 c0=0
+New Line.Feeder02 phases=3 bus1=collector01.1.2.3 bus2=collector02.1.2.3 length=0.25 units=km r1=0.20 x1=0.30 r0=0.40 x0=0.90 c1=0 c0=0
+New Line.Feeder03 phases=3 bus1=collector02.1.2.3 bus2=collector03.1.2.3 length=0.25 units=km r1=0.20 x1=0.30 r0=0.40 x0=0.90 c1=0 c0=0
+New Line.Feeder04 phases=3 bus1=collector03.1.2.3 bus2=collector04.1.2.3 length=0.25 units=km r1=0.20 x1=0.30 r0=0.40 x0=0.90 c1=0 c0=0
+New Line.Feeder05 phases=3 bus1=collector04.1.2.3 bus2=collector05.1.2.3 length=0.25 units=km r1=0.20 x1=0.30 r0=0.40 x0=0.90 c1=0 c0=0
+New Line.Feeder06 phases=3 bus1=collector05.1.2.3 bus2=collector06.1.2.3 length=0.25 units=km r1=0.20 x1=0.30 r0=0.40 x0=0.90 c1=0 c0=0
+New Line.Feeder07 phases=3 bus1=collector06.1.2.3 bus2=collector07.1.2.3 length=0.25 units=km r1=0.20 x1=0.30 r0=0.40 x0=0.90 c1=0 c0=0
+New Line.Feeder08 phases=3 bus1=collector07.1.2.3 bus2=collector08.1.2.3 length=0.25 units=km r1=0.20 x1=0.30 r0=0.40 x0=0.90 c1=0 c0=0
+New Line.Feeder09 phases=3 bus1=collector08.1.2.3 bus2=collector09.1.2.3 length=0.25 units=km r1=0.20 x1=0.30 r0=0.40 x0=0.90 c1=0 c0=0
+New Line.Feeder10 phases=3 bus1=collector09.1.2.3 bus2=collector10.1.2.3 length=0.25 units=km r1=0.20 x1=0.30 r0=0.40 x0=0.90 c1=0 c0=0
+
+! The Python runner edits these baseline shapes in memory with profiles from
+! the selected fixture, NWS forecast, or historical WIND Toolkit sample.
+! BEGIN WIND PROFILE
+New LoadShape.WT01Shape npts=24 interval=1 mult=(0.40 0.44 0.47 0.45 0.50 0.56 0.62 0.70 0.76 0.82 0.88 0.91 0.94 0.90 0.85 0.81 0.75 0.68 0.62 0.57 0.52 0.48 0.45 0.42)
+New LoadShape.WT02Shape npts=24 interval=1 mult=(0.40 0.44 0.47 0.45 0.50 0.56 0.62 0.70 0.76 0.82 0.88 0.91 0.94 0.90 0.85 0.81 0.75 0.68 0.62 0.57 0.52 0.48 0.45 0.42)
+New LoadShape.WT03Shape npts=24 interval=1 mult=(0.40 0.44 0.47 0.45 0.50 0.56 0.62 0.70 0.76 0.82 0.88 0.91 0.94 0.90 0.85 0.81 0.75 0.68 0.62 0.57 0.52 0.48 0.45 0.42)
+New LoadShape.WT04Shape npts=24 interval=1 mult=(0.40 0.44 0.47 0.45 0.50 0.56 0.62 0.70 0.76 0.82 0.88 0.91 0.94 0.90 0.85 0.81 0.75 0.68 0.62 0.57 0.52 0.48 0.45 0.42)
+New LoadShape.WT05Shape npts=24 interval=1 mult=(0.40 0.44 0.47 0.45 0.50 0.56 0.62 0.70 0.76 0.82 0.88 0.91 0.94 0.90 0.85 0.81 0.75 0.68 0.62 0.57 0.52 0.48 0.45 0.42)
+New LoadShape.WT06Shape npts=24 interval=1 mult=(0.40 0.44 0.47 0.45 0.50 0.56 0.62 0.70 0.76 0.82 0.88 0.91 0.94 0.90 0.85 0.81 0.75 0.68 0.62 0.57 0.52 0.48 0.45 0.42)
+New LoadShape.WT07Shape npts=24 interval=1 mult=(0.40 0.44 0.47 0.45 0.50 0.56 0.62 0.70 0.76 0.82 0.88 0.91 0.94 0.90 0.85 0.81 0.75 0.68 0.62 0.57 0.52 0.48 0.45 0.42)
+New LoadShape.WT08Shape npts=24 interval=1 mult=(0.40 0.44 0.47 0.45 0.50 0.56 0.62 0.70 0.76 0.82 0.88 0.91 0.94 0.90 0.85 0.81 0.75 0.68 0.62 0.57 0.52 0.48 0.45 0.42)
+New LoadShape.WT09Shape npts=24 interval=1 mult=(0.40 0.44 0.47 0.45 0.50 0.56 0.62 0.70 0.76 0.82 0.88 0.91 0.94 0.90 0.85 0.81 0.75 0.68 0.62 0.57 0.52 0.48 0.45 0.42)
+New LoadShape.WT10Shape npts=24 interval=1 mult=(0.40 0.44 0.47 0.45 0.50 0.56 0.62 0.70 0.76 0.82 0.88 0.91 0.94 0.90 0.85 0.81 0.75 0.68 0.62 0.57 0.52 0.48 0.45 0.42)
+New LoadShape.BatteryChargeShape npts=24 interval=1 mult=(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
+! END WIND PROFILE
+
+New Generator.WT01 phases=3 bus1=collector01.1.2.3 kv=12.47 kW=4200 kvar=0 model=1 daily=WT01Shape
+New Generator.WT02 phases=3 bus1=collector02.1.2.3 kv=12.47 kW=4200 kvar=0 model=1 daily=WT02Shape
+New Generator.WT03 phases=3 bus1=collector03.1.2.3 kv=12.47 kW=4200 kvar=0 model=1 daily=WT03Shape
+New Generator.WT04 phases=3 bus1=collector04.1.2.3 kv=12.47 kW=4200 kvar=0 model=1 daily=WT04Shape
+New Generator.WT05 phases=3 bus1=collector05.1.2.3 kv=12.47 kW=4200 kvar=0 model=1 daily=WT05Shape
+New Generator.WT06 phases=3 bus1=collector06.1.2.3 kv=12.47 kW=4200 kvar=0 model=1 daily=WT06Shape
+New Generator.WT07 phases=3 bus1=collector07.1.2.3 kv=12.47 kW=4200 kvar=0 model=1 daily=WT07Shape
+New Generator.WT08 phases=3 bus1=collector08.1.2.3 kv=12.47 kW=4200 kvar=0 model=1 daily=WT08Shape
+New Generator.WT09 phases=3 bus1=collector09.1.2.3 kv=12.47 kW=4200 kvar=0 model=1 daily=WT09Shape
+New Generator.WT10 phases=3 bus1=collector10.1.2.3 kv=12.47 kW=4200 kvar=0 model=1 daily=WT10Shape
+
+New Load.BatteryCharge phases=3 bus1=substation.1.2.3 conn=wye kv=12.47 kW=5000 kvar=0 model=1 daily=BatteryChargeShape
+New Load.Local01 phases=3 bus1=collector01.1.2.3 conn=wye kv=12.47 kW=150 kvar=40 model=1
+New Load.Local02 phases=3 bus1=collector02.1.2.3 conn=wye kv=12.47 kW=150 kvar=40 model=1
+New Load.Local03 phases=3 bus1=collector03.1.2.3 conn=wye kv=12.47 kW=150 kvar=40 model=1
+New Load.Local04 phases=3 bus1=collector04.1.2.3 conn=wye kv=12.47 kW=150 kvar=40 model=1
+New Load.Local05 phases=3 bus1=collector05.1.2.3 conn=wye kv=12.47 kW=150 kvar=40 model=1
+New Load.Local06 phases=3 bus1=collector06.1.2.3 conn=wye kv=12.47 kW=150 kvar=40 model=1
+New Load.Local07 phases=3 bus1=collector07.1.2.3 conn=wye kv=12.47 kW=150 kvar=40 model=1
+New Load.Local08 phases=3 bus1=collector08.1.2.3 conn=wye kv=12.47 kW=150 kvar=40 model=1
+New Load.Local09 phases=3 bus1=collector09.1.2.3 conn=wye kv=12.47 kW=150 kvar=40 model=1
+New Load.Local10 phases=3 bus1=collector10.1.2.3 conn=wye kv=12.47 kW=150 kvar=40 model=1
+
+New Monitor.SubstationPower element=Transformer.Substation terminal=1 mode=1 ppolar=no
+Set VoltageBases=[69, 12.47]
+CalcVoltageBases
+Set Mode=Daily Stepsize=1h Number=24
+Set ControlMode=Static
+Solve

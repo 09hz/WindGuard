@@ -1,0 +1,7 @@
+{
+  "data_status": "SIMULATED DEMO DATA",
+  "grid_interconnection": {
+    "export_limit_mw": 30.0,
+    "unit": "MW"
+  }
+}

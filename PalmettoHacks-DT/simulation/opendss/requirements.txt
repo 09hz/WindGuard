@@ -1,0 +1,1 @@
+py-dss-interface>=2.3,<3
