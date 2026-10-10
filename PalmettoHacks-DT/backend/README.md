@@ -8,15 +8,20 @@ utility grid.
 
 ## Run locally (Windows PowerShell)
 
-Run these commands from the repository root:
+Run these commands from `PalmettoHacks-DT`:
 
 ```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
+py -m venv ..\.venv
+..\.venv\Scripts\Activate.ps1
 python .\generate_data.py
 python -m pip install -r .\backend\requirements.txt
 python -m uvicorn backend.main:app --reload
 ```
+
+Copy the repository-root `.env.example` to `.env` and put any local API keys
+there. `.env` is ignored by Git and loaded automatically for local runs. For
+Vercel deployments, add secrets such as `NREL_API_KEY` under the project's
+Environment Variables settings; Vercel does not receive the local `.env` file.
 
 The API is available at `http://127.0.0.1:8000`; interactive OpenAPI docs are
 at `http://127.0.0.1:8000/docs`. If PowerShell blocks virtual-environment

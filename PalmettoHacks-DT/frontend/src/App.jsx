@@ -975,8 +975,17 @@ export default function App() {
   };
 
   if (isLoading) return <LoadingScreen />;
-  if (error && !data) return <ErrorScreen error={error} onRetry={loadDashboard} />;
-  if (!current) return <ErrorScreen error="No farm data was returned by the API." onRetry={loadDashboard} />;
+  if (error && !data) {
+    return <ErrorScreen error={error} onRetry={() => loadDashboard(weatherSource)} />;
+  }
+  if (!current) {
+    return (
+      <ErrorScreen
+        error="No farm data was returned by the API."
+        onRetry={() => loadDashboard(weatherSource)}
+      />
+    );
+  }
 
   const overview = current.overview;
   const gridOverloaded = overview.overload_hours > 0;
