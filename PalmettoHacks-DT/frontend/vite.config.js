@@ -6,6 +6,8 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5173,
+    // Standalone mode imports the shared fixtures from ../data.
+    fs: { allow: [".."] },
     proxy: {
       "/api": {
         target: "http://127.0.0.1:8000",
