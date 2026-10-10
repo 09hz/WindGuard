@@ -1,0 +1,47 @@
+name: Full-Stack CI/CD Deployment
+
+on:
+  push:
+    branches: [ deploy_test ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout your source code from GitHub
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Set up Python environment for FastAPI
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # 3. Install Python/FastAPI dependencies
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # If using poetry or another manager, adjust accordingly (e.g., poetry install)
+
+      # 4. Set up Node.js environment for React + Vite
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 5. Install frontend dependencies and build Vite app
+      - name: Build frontend (Vite)
+        run: |
+          npm install
+          npm run build
+        # Note: This creates a production-ready 'dist' folder for your React app
+
+      # 6. Add your cloud deployment script or action here
+      - name: Run deployment step
+        run: |
+          echo "Add commands here to transfer files, build Docker, or ping your hosting provider (e.g., Render, Fly.io, AWS)"
