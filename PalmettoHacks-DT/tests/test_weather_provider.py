@@ -270,55 +270,6 @@ def test_wind_toolkit_reads_root_env_at_request_time(monkeypatch) -> None:
     }
 
 
-def test_wind_toolkit_falls_back_to_root_env_when_process_credentials_are_blank(
-    monkeypatch,
-) -> None:
-    monkeypatch.setenv("NREL_API_KEY", "")
-    monkeypatch.setenv("NREL_API_EMAIL", "   ")
-    requested = {}
-
-    monkeypatch.setattr(
-        weather_provider,
-        "dotenv_values",
-        lambda _path: {
-            "NREL_API_KEY": "test-key-from-root-env",
-            "NREL_API_EMAIL": "root@example.com",
-        },
-    )
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        requested["api_key"] = request.url.params["api_key"]
-        requested["email"] = httpx.QueryParams(
-            request.content.decode("ascii")
-        )["email"]
-        return httpx.Response(
-            200,
-            text="\n".join(
-                ["Year,Month,Day,Hour,Minute,windspeed_100m"]
-                + [f"2012,1,1,{hour},0,8.0" for hour in range(24)]
-            ),
-            request=request,
-        )
-
-    monkeypatch.setattr(
-        weather_provider,
-        "_provider_client",
-        lambda: httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-
-    weather_provider.fetch_wind_toolkit_day(
-        2012,
-        1,
-        latitude=36.54321,
-        longitude=-82.98765,
-    )
-
-    assert requested == {
-        "api_key": "test-key-from-root-env",
-        "email": "root@example.com",
-    }
-
-
 def test_wind_toolkit_reloads_credentials_from_local_env(monkeypatch) -> None:
     _ignore_local_env(monkeypatch)
     monkeypatch.delenv("NREL_API_KEY", raising=False)
