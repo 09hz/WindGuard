@@ -4,7 +4,6 @@ import {
   DEFAULT_WEATHER,
   defaultLayout,
   initialState,
-  makeTurbine,
   step,
 } from "./engine.js";
 
@@ -60,18 +59,6 @@ export function useSimulation() {
     [commit],
   );
 
-  const addTurbine = useCallback(
-    (x, y) => {
-      let created;
-      updateTurbines((turbines) => {
-        created = makeTurbine(x, y, turbines);
-        return [...turbines, created];
-      });
-      return created;
-    },
-    [updateTurbines],
-  );
-
   const moveTurbine = useCallback(
     (id, x, y) => updateTurbines((turbines) => turbines.map((t) => (t.id === id ? { ...t, x, y } : t))),
     [updateTurbines],
@@ -80,11 +67,6 @@ export function useSimulation() {
   const editTurbine = useCallback(
     (id, changes) =>
       updateTurbines((turbines) => turbines.map((t) => (t.id === id ? { ...t, ...changes } : t))),
-    [updateTurbines],
-  );
-
-  const removeTurbine = useCallback(
-    (id) => updateTurbines((turbines) => turbines.filter((t) => t.id !== id)),
     [updateTurbines],
   );
 
@@ -103,10 +85,8 @@ export function useSimulation() {
     setRunning,
     speedIndex,
     setSpeedIndex,
-    addTurbine,
     moveTurbine,
     editTurbine,
-    removeTurbine,
     reset,
   };
 }

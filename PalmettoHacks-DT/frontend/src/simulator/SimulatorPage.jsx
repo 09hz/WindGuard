@@ -80,12 +80,12 @@ export default function SimulatorPage() {
   const { farm } = snapshot;
 
   const stats = useMemo(() => {
-    const readings = Object.values(snapshot.readings);
-    const online = snapshot.turbines.filter((t) => !t.fault && !t.tripped).length;
-    const highRisk = readings.filter((reading) => reading.risk >= 0.65).length;
+    const farmTurbines = snapshot.turbines;
+    const online = farmTurbines.filter((t) => !t.fault && !t.tripped).length;
+    const highRisk = farmTurbines.filter((t) => snapshot.readings[t.id]?.risk >= 0.65).length;
     const wakeLoss = farm.freeStream > 0 ? 1 - farm.gross / farm.freeStream : 0;
-    const capacity = snapshot.turbines.reduce((total, t) => total + t.ratedPower, 0);
-    return { online, highRisk, wakeLoss, capacity };
+    const capacity = farmTurbines.reduce((total, t) => total + t.ratedPower, 0);
+    return { online, highRisk, wakeLoss, capacity, farmCount: farmTurbines.length };
   }, [snapshot, farm]);
 
   const cutOut = farm.wind >= 25;
@@ -110,14 +110,14 @@ export default function SimulatorPage() {
       <main className="mx-auto max-w-[1600px] px-4 pb-8 pt-6 sm:px-7 sm:pt-8 lg:px-10">
         <div className="fade-in mb-5">
           <div className="eyebrow">Simulator <span className="mx-1 text-slate-700">/</span> Real time</div>
-          <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">Build a farm and stress-test it</h2>
+          <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">Stress-test the QNX-wired turbines</h2>
           <p className="mt-1 text-xs text-slate-500">
-            Place turbines, change the weather and turbine health, and watch output, wake losses, risk and grid limits respond.
+            Move the three turbines, change the weather and each turbine’s health, and watch output, wake losses, risk and grid limits respond.
           </p>
         </div>
 
         <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <Readout icon={Zap} label="Farm output" value={farm.gross.toFixed(1)} unit={`/ ${stats.capacity.toFixed(1)} MW`} detail={`${stats.online} of ${snapshot.turbines.length} turbines online`} />
+          <Readout icon={Zap} label="Farm output" value={farm.gross.toFixed(1)} unit={`/ ${stats.capacity.toFixed(1)} MW`} detail={`${stats.online} of ${stats.farmCount} turbines online`} />
           <Readout
             icon={Wind}
             label="Incoming wind"
@@ -140,12 +140,7 @@ export default function SimulatorPage() {
               running={sim.running}
               selectedId={selectedId}
               onSelect={setSelectedId}
-              onAdd={sim.addTurbine}
               onMove={sim.moveTurbine}
-              onRemove={(id) => {
-                sim.removeTurbine(id);
-                setSelectedId((current) => (current === id ? null : current));
-              }}
             />
             <LiveChart history={snapshot.history} exportLimit={grid.exportLimit} />
             {snapshot.events.length > 0 && (
@@ -170,10 +165,6 @@ export default function SimulatorPage() {
               turbine={selected}
               reading={selected ? snapshot.readings[selected.id] : null}
               onEdit={sim.editTurbine}
-              onRemove={(id) => {
-                sim.removeTurbine(id);
-                setSelectedId(null);
-              }}
             />
             <WeatherControls weather={weather} setWeather={sim.setWeather} />
             <GridControls grid={grid} setGrid={sim.setGrid} batterySoc={snapshot.batterySoc} />
