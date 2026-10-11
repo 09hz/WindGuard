@@ -277,7 +277,7 @@ def get_recommendations(
 
 @app.get("/api/weather/wind-toolkit", response_model=WindToolkitResponse)
 def get_wind_toolkit_day(
-    year: int = Query(default=2012, ge=2007, le=2013),
+    year: int = Query(default=2012, ge=2000, le=2020),
     day_of_year: int = Query(default=1, ge=1, le=366),
 ) -> WindToolkitResponse:
     """Return a historical NREL WIND Toolkit day for contextual comparison."""
