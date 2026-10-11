@@ -4,24 +4,49 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import math
 import os
 import re
 import threading
 import time
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 import httpx
+from dotenv import dotenv_values
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+LOCAL_ENV_FILE = REPOSITORY_ROOT / ".env"
+
+
+def _local_environment() -> dict[str, str | None]:
+    """Read the repository-root .env at use time, independent of process cwd."""
+    return dotenv_values(LOCAL_ENV_FILE)
+
+
+def _credential_value(name: str, local_environment: dict[str, str | None]) -> str | None:
+    """Prefer a non-empty process credential, falling back to the local .env."""
+    process_value = os.environ.get(name, "").strip()
+    local_value = (local_environment.get(name) or "").strip()
+    return process_value or local_value or None
+
+
+def _environment_value(name: str, default: str) -> str:
+    if name in os.environ:
+        return os.environ[name]
+    return _local_environment().get(name) or default
 
 NWS_API_BASE = "https://api.weather.gov"
 NREL_WIND_TOOLKIT_URL = (
-    "https://developer.nrel.gov/api/wind-toolkit/v2/wind/wtk-download.csv"
+    "https://developer.nlr.gov/api/wind-toolkit/v2/wind/"
+    "wtk-south-atlantic-yearly-5min-v1-0-0-download.csv"
 )
-FARM_LATITUDE = float(os.getenv("WEATHER_LATITUDE", "34.054"))
-FARM_LONGITUDE = float(os.getenv("WEATHER_LONGITUDE", "-81.063"))
-NWS_USER_AGENT = os.getenv(
+FARM_LATITUDE = float(_environment_value("WEATHER_LATITUDE", "34.054"))
+FARM_LONGITUDE = float(_environment_value("WEATHER_LONGITUDE", "-81.063"))
+NWS_USER_AGENT = _environment_value(
     "NWS_USER_AGENT", "WindGuardTwin/0.1 (local hackathon demo)"
 )
 
@@ -215,12 +240,68 @@ def fetch_nws_hourly_forecast(
 def _find_wind_column(headers: list[str]) -> str:
     """Find the hourly wind-speed column in a WIND Toolkit CSV."""
     for header in headers:
-        normalized = header.strip().lower().replace("_", " ")
-        if "wind speed" in normalized and "direction" not in normalized:
+        normalized = re.sub(r"[^a-z0-9]", "", header.strip().lower())
+        if normalized.startswith("windspeed") and "direction" not in normalized:
             return header
     raise WeatherProviderError(
         "WIND Toolkit CSV did not include a recognizable wind speed column."
     )
+
+
+def _nrel_error_detail(
+    response: httpx.Response,
+    api_key: str,
+    api_email: str,
+) -> str:
+    """Return a bounded upstream error message without exposing request secrets."""
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = response.text
+
+    if isinstance(payload, dict):
+        payload = payload.get("errors") or payload.get("error") or payload.get("message")
+    if isinstance(payload, list):
+        payload = "; ".join(str(item) for item in payload)
+    if not isinstance(payload, str):
+        return ""
+
+    detail = unquote(payload)
+    if api_key:
+        detail = detail.replace(api_key, "[redacted]")
+    if api_email:
+        detail = detail.replace(api_email, "[redacted]")
+    detail = re.sub(
+        r"(?i)((?:\"?(?:api_key|email)\"?)\s*[:=]\s*[\"']?)[^&\s,\"'}]+",
+        r"\1[redacted]",
+        detail,
+    )
+    detail = re.sub(r"https?://\S+", "[upstream URL omitted]", detail)
+    return detail[:300].strip()
+
+
+def _is_async_download_ack(response: httpx.Response) -> bool:
+    """Identify queued JSON download acknowledgements, not hourly CSV data."""
+    try:
+        payload = response.json()
+    except ValueError:
+        return False
+    if not isinstance(payload, dict):
+        return False
+
+    serialized = json.dumps(payload, default=str).lower()
+    processing = any(
+        phrase in serialized
+        for phrase in (
+            "in progress",
+            "queued",
+            "processing",
+            "being generated",
+            "generating",
+        )
+    )
+    provides_download = "download" in serialized or "email" in serialized
+    return processing and provides_download
 
 
 def _parse_wind_toolkit_csv(
@@ -290,10 +371,11 @@ def fetch_wind_toolkit_day(
     """Fetch a historical hourly day from the NREL WIND Toolkit API.
 
     WIND Toolkit is archival resource data, not a current weather forecast.
-    Set ``NREL_API_KEY`` in the environment; the key is never returned to callers.
+    Set ``NREL_API_KEY`` and ``NREL_API_EMAIL`` in the environment; neither is
+    returned to callers.
     """
-    if not 2007 <= year <= 2013:
-        raise ValueError("WIND Toolkit year must be between 2007 and 2013.")
+    if not 2000 <= year <= 2020:
+        raise ValueError("South Atlantic WIND Toolkit year must be between 2000 and 2020.")
     maximum_day = 366 if year % 4 == 0 else 365
     if not 1 <= day_of_year <= maximum_day:
         raise ValueError(f"day_of_year must be between 1 and {maximum_day} for {year}.")
@@ -301,11 +383,22 @@ def fetch_wind_toolkit_day(
         raise ValueError("latitude must be between -90 and 90.")
     if not math.isfinite(longitude) or not -180 <= longitude <= 180:
         raise ValueError("longitude must be between -180 and 180.")
-    api_key = os.getenv("NREL_API_KEY")
-    if not api_key:
+    environment = _local_environment()
+    api_key = _credential_value("NREL_API_KEY", environment)
+    api_email = _credential_value("NREL_API_EMAIL", environment)
+    if not api_key or not api_email:
+        missing = [
+            name
+            for name, value in (
+                ("NREL_API_KEY", api_key),
+                ("NREL_API_EMAIL", api_email),
+            )
+            if not value
+        ]
         raise WeatherProviderError(
-            "NREL_API_KEY is not configured. Set it in the backend environment "
-            "to access the historical WIND Toolkit API."
+            f"{', '.join(missing)} must be configured in the backend environment "
+            "to access the historical WIND Toolkit API. Set these in the "
+            "repository-root .env or the backend process environment."
         )
 
     cache_key = f"nrel:{year}:{day_of_year}:{latitude:.5f}:{longitude:.5f}"
@@ -313,19 +406,30 @@ def fetch_wind_toolkit_day(
     if cached is not None:
         return [dict(row) for row in cached]
 
-    params = {
-        "api_key": api_key,
+    query_params = {"api_key": api_key}
+    form_data = {
+        "email": api_email,
         "wkt": f"POINT({longitude:.5f} {latitude:.5f})",
         "names": str(year),
         "utc": "true",
         "leap_day": "true",
         "interval": "60",
-        "attributes": "wind_speed",
+        "attributes": "windspeed_100m",
     }
     try:
         with _provider_client() as client:
-            response = client.get(NREL_WIND_TOOLKIT_URL, params=params)
+            response = client.post(
+                NREL_WIND_TOOLKIT_URL,
+                params=query_params,
+                data=form_data,
+            )
             response.raise_for_status()
+            if _is_async_download_ack(response):
+                raise WeatherProviderError(
+                    "NLR WIND Toolkit acknowledged a download request that is "
+                    "still processing; no hourly CSV data was returned. This "
+                    "dashboard requires a synchronous one-point/year CSV response."
+                )
             day = _parse_wind_toolkit_csv(
                 response.text,
                 year=year,
@@ -334,9 +438,37 @@ def fetch_wind_toolkit_day(
     except WeatherProviderError:
         raise
     except httpx.HTTPStatusError as error:
+        upstream_detail = _nrel_error_detail(error.response, api_key, api_email)
+        detail = f" Upstream detail: {upstream_detail}" if upstream_detail else ""
         raise WeatherProviderError(
             f"NREL WIND Toolkit returned HTTP {error.response.status_code}. "
             "Check the API key, query limits, and requested site/year."
+            f"{detail}"
+        ) from error
+    except httpx.ConnectError as error:
+        error_details = " ".join(
+            str(cause)
+            for cause in (error, error.__cause__, error.__context__)
+            if cause is not None
+        ).lower()
+        if any(
+            indicator in error_details
+            for indicator in (
+                "getaddrinfo failed",
+                "name or service not known",
+                "nodename nor servname",
+                "name resolution",
+                "no such host",
+            )
+        ):
+            host = urlsplit(NREL_WIND_TOOLKIT_URL).hostname
+            raise WeatherProviderError(
+                f"NREL WIND Toolkit DNS lookup failed for {host}. Check DNS/network "
+                "access from the backend environment and try again."
+            ) from error
+        raise WeatherProviderError(
+            "NREL WIND Toolkit could not establish an HTTPS connection. Check "
+            "network access to the provider and try again."
         ) from error
     except httpx.RequestError as error:
         raise WeatherProviderError(

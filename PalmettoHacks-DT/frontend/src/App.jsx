@@ -281,7 +281,7 @@ function MapPanel({ turbines, selectedId, onSelect }) {
         })}
         <div className="absolute left-1/2 top-[92%] z-10 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-lg border border-teal/25 bg-[#10252b] px-3 py-1.5 shadow-[0_0_24px_rgba(79,224,193,0.1)]">
           <Zap size={13} className="text-teal" />
-          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-teal">Substation</span>
+          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-teal"> Substation</span>
         </div>
         <div className="absolute bottom-2 left-3 text-[9px] text-slate-600">
           Select a turbine node to inspect its simulated health profile
@@ -975,8 +975,17 @@ export default function App() {
   };
 
   if (isLoading) return <LoadingScreen />;
-  if (error && !data) return <ErrorScreen error={error} onRetry={loadDashboard} />;
-  if (!current) return <ErrorScreen error="No farm data was returned by the API." onRetry={loadDashboard} />;
+  if (error && !data) {
+    return <ErrorScreen error={error} onRetry={() => loadDashboard(weatherSource)} />;
+  }
+  if (!current) {
+    return (
+      <ErrorScreen
+        error="No farm data was returned by the API."
+        onRetry={() => loadDashboard(weatherSource)}
+      />
+    );
+  }
 
   const overview = current.overview;
   const gridOverloaded = overview.overload_hours > 0;
