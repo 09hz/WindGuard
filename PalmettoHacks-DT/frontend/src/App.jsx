@@ -30,6 +30,7 @@ import {
   YAxis,
 } from "recharts";
 import { api } from "./api";
+import TabNav from "./TabNav.jsx";
 
 const DISCLAIMER =
   "Prototype using simulated operational data; not for real-world safety or dispatch decisions.";
@@ -281,7 +282,7 @@ function MapPanel({ turbines, selectedId, onSelect }) {
         })}
         <div className="absolute left-1/2 top-[92%] z-10 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-lg border border-teal/25 bg-[#10252b] px-3 py-1.5 shadow-[0_0_24px_rgba(79,224,193,0.1)]">
           <Zap size={13} className="text-teal" />
-          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-teal">Substation</span>
+          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-teal"> Substation</span>
         </div>
         <div className="absolute bottom-2 left-3 text-[9px] text-slate-600">
           Select a turbine node to inspect its simulated health profile
@@ -975,8 +976,17 @@ export default function App() {
   };
 
   if (isLoading) return <LoadingScreen />;
-  if (error && !data) return <ErrorScreen error={error} onRetry={loadDashboard} />;
-  if (!current) return <ErrorScreen error="No farm data was returned by the API." onRetry={loadDashboard} />;
+  if (error && !data) {
+    return <ErrorScreen error={error} onRetry={() => loadDashboard(weatherSource)} />;
+  }
+  if (!current) {
+    return (
+      <ErrorScreen
+        error="No farm data was returned by the API."
+        onRetry={() => loadDashboard(weatherSource)}
+      />
+    );
+  }
 
   const overview = current.overview;
   const gridOverloaded = overview.overload_hours > 0;
@@ -988,7 +998,7 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-white/[0.06] bg-ink/75">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-4 sm:px-7 lg:px-10">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-4 sm:px-7 lg:px-10">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-teal/20 bg-teal/[0.075] text-teal shadow-[0_0_22px_rgba(79,224,193,.07)]">
               <Wind size={22} strokeWidth={1.7} />
@@ -1010,6 +1020,9 @@ export default function App() {
               </div>
               <div className="mt-1 hidden text-[10px] text-slate-500 sm:block">Wind farm operations intelligence · Palmetto site</div>
             </div>
+          </div>
+          <div className="order-last w-full sm:order-none sm:ml-auto sm:w-auto">
+            <TabNav active="dashboard" />
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <div className="flex items-center gap-2">
