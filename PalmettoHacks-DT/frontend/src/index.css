@@ -28,9 +28,12 @@ body {
     #09131b;
 }
 
-button,
-input {
-  font: inherit;
+/* Layered so Tailwind's text-size utilities on buttons still apply. */
+@layer base {
+  button,
+  input {
+    font: inherit;
+  }
 }
 
 button:focus-visible,
@@ -118,6 +121,18 @@ input:focus-visible {
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .flow-streak {
+    animation: flow-streak 1s linear infinite;
+  }
+
+  @keyframes flow-streak {
+    to {
+      stroke-dashoffset: -100;
     }
   }
 }
