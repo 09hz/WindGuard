@@ -1,0 +1,829 @@
+From 6c7cab896441e970bfe2a72c0ba856bdf1d62688 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 21:59:53 +0000
+Subject: [PATCH] Run the dashboard without the FastAPI backend
+
+Production builds without VITE_API_BASE_URL now compute the twin in the
+browser from the shared data fixtures and call the NWS API directly, so the
+frontend can be deployed to Vercel as a static site.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01KYXtK3qAqNuh1AzGbz4jcT
+---
+ PalmettoHacks-DT/frontend/README.md           |  24 ++
+ PalmettoHacks-DT/frontend/src/api.js          | 108 +++++----
+ .../frontend/src/standalone/localApi.js       | 200 ++++++++++++++++
+ .../frontend/src/standalone/twinEngine.js     | 215 ++++++++++++++++++
+ .../frontend/src/standalone/weather.js        | 150 ++++++++++++
+ PalmettoHacks-DT/frontend/vercel.json         |   6 +
+ PalmettoHacks-DT/frontend/vite.config.js      |  56 ++---
+ 7 files changed, 683 insertions(+), 76 deletions(-)
+ create mode 100644 PalmettoHacks-DT/frontend/src/standalone/localApi.js
+ create mode 100644 PalmettoHacks-DT/frontend/src/standalone/twinEngine.js
+ create mode 100644 PalmettoHacks-DT/frontend/src/standalone/weather.js
+ create mode 100644 PalmettoHacks-DT/frontend/vercel.json
+
+diff --git a/PalmettoHacks-DT/frontend/README.md b/PalmettoHacks-DT/frontend/README.md
+index dd1333a..824606c 100644
+--- a/PalmettoHacks-DT/frontend/README.md
++++ b/PalmettoHacks-DT/frontend/README.md
+@@ -40,3 +40,27 @@ npm run preview
+ 
+ The dashboard is for demo use only. It labels fixture-backed values as
+ **SIMULATED DEMO DATA** and does not provide safety or dispatch instructions.
++
++## Deploy without the backend (Vercel)
++
++Production builds run the twin model in the browser when `VITE_API_BASE_URL`
++is not set. `src/standalone/` is a JavaScript port of the FastAPI routes and
++`backend/services/twin_engine.py`, reads the same `data/*.json` fixtures, and
++calls the public NWS API directly for the live forecast. No server is needed.
++
++1. In Vercel, choose **Add New → Project** and import this repository.
++2. Set **Root Directory** to `PalmettoHacks-DT/frontend`. Leave "Include files
++   outside the root directory" enabled, since the build imports `../data`.
++3. Keep the detected Vite settings (`npm run build`, output `dist`) and deploy.
++
++Optional environment variables:
++
++- `VITE_NREL_API_KEY` enables the WIND Toolkit button. The key is embedded in
++  the public bundle, so only use a free, rate-limited key.
++- `VITE_WEATHER_LATITUDE` and `VITE_WEATHER_LONGITUDE` move the NWS point.
++- `VITE_API_BASE_URL` switches back to a hosted FastAPI backend.
++
++To try standalone mode locally, run `npm run build && npm run preview`, or
++start the dev server with `VITE_STANDALONE=true npm run dev`.
++
++The Python model and the JavaScript port must be kept in sync by hand.
+diff --git a/PalmettoHacks-DT/frontend/src/api.js b/PalmettoHacks-DT/frontend/src/api.js
+index 2557638..9d469a2 100644
+--- a/PalmettoHacks-DT/frontend/src/api.js
++++ b/PalmettoHacks-DT/frontend/src/api.js
+@@ -1,49 +1,59 @@
+-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+-
+-async function request(path, options = {}) {
+-  let response;
+-  try {
+-    response = await fetch(`${API_BASE}${path}`, {
+-      ...options,
+-      headers: {
+-        ...(options.body ? { "Content-Type": "application/json" } : {}),
+-        ...options.headers,
+-      },
+-    });
+-  } catch (error) {
+-    throw new Error(
+-      `Cannot reach the WindGuard API at ${API_BASE}. Start the FastAPI server and try again.`,
+-      { cause: error },
+-    );
+-  }
+-
+-  if (!response.ok) {
+-    let detail = `Request failed (${response.status})`;
+-    try {
+-      const payload = await response.json();
+-      detail = payload.detail ?? detail;
+-    } catch {
+-      // Keep the HTTP status when the server did not return JSON.
+-    }
+-    throw new Error(detail);
+-  }
+-  return response.json();
+-}
+-
+-export const api = {
+-  overview: (source = "demo") => request(`/farm/overview?source=${source}`),
+-  turbines: (source = "demo") => request(`/turbines?source=${source}`),
+-  turbine: (id, source = "demo") =>
+-    request(`/turbines/${encodeURIComponent(id)}?source=${source}`),
+-  forecast: (source = "demo") => request(`/forecast?source=${source}`),
+-  grid: (source = "demo") => request(`/grid/status?source=${source}`),
+-  recommendations: (source = "demo") =>
+-    request(`/recommendations?source=${source}`),
+-  scenario: (scenario) =>
+-    request("/scenarios", {
+-      method: "POST",
+-      body: JSON.stringify(scenario),
+-    }),
+-  windToolkit: (year, dayOfYear) =>
+-    request(`/weather/wind-toolkit?year=${year}&day_of_year=${dayOfYear}`),
+-};
++import { localApi } from "./standalone/localApi.js";
++
++const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
++
++// Production builds without VITE_API_BASE_URL (for example a static Vercel
++// deploy) run the twin model in the browser instead of calling FastAPI.
++export const STANDALONE =
++  import.meta.env.VITE_STANDALONE === "true" ||
++  (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL);
++
++async function request(path, options = {}) {
++  let response;
++  try {
++    response = await fetch(`${API_BASE}${path}`, {
++      ...options,
++      headers: {
++        ...(options.body ? { "Content-Type": "application/json" } : {}),
++        ...options.headers,
++      },
++    });
++  } catch (error) {
++    throw new Error(
++      `Cannot reach the WindGuard API at ${API_BASE}. Start the FastAPI server and try again.`,
++      { cause: error },
++    );
++  }
++
++  if (!response.ok) {
++    let detail = `Request failed (${response.status})`;
++    try {
++      const payload = await response.json();
++      detail = payload.detail ?? detail;
++    } catch {
++      // Keep the HTTP status when the server did not return JSON.
++    }
++    throw new Error(detail);
++  }
++  return response.json();
++}
++
++const remoteApi = {
++  overview: (source = "demo") => request(`/farm/overview?source=${source}`),
++  turbines: (source = "demo") => request(`/turbines?source=${source}`),
++  turbine: (id, source = "demo") =>
++    request(`/turbines/${encodeURIComponent(id)}?source=${source}`),
++  forecast: (source = "demo") => request(`/forecast?source=${source}`),
++  grid: (source = "demo") => request(`/grid/status?source=${source}`),
++  recommendations: (source = "demo") =>
++    request(`/recommendations?source=${source}`),
++  scenario: (scenario) =>
++    request("/scenarios", {
++      method: "POST",
++      body: JSON.stringify(scenario),
++    }),
++  windToolkit: (year, dayOfYear) =>
++    request(`/weather/wind-toolkit?year=${year}&day_of_year=${dayOfYear}`),
++};
++
++export const api = STANDALONE ? localApi : remoteApi;
+diff --git a/PalmettoHacks-DT/frontend/src/standalone/localApi.js b/PalmettoHacks-DT/frontend/src/standalone/localApi.js
+new file mode 100644
+index 0000000..6cdf0e8
+--- /dev/null
++++ b/PalmettoHacks-DT/frontend/src/standalone/localApi.js
+@@ -0,0 +1,200 @@
++// In-browser replacement for the FastAPI routes in backend/main.py. Each method
++// returns the same JSON shape as the matching /api endpoint.
++
++import turbinesFixture from "../../../data/turbines.json";
++import forecastFixture from "../../../data/hourly_forecast.json";
++import gridFixture from "../../../data/grid_config.json";
++import batteryFixture from "../../../data/battery_config.json";
++import { DATA_STATUS, DISCLAIMER, runTwin } from "./twinEngine.js";
++import {
++  FARM_LATITUDE,
++  FARM_LONGITUDE,
++  fetchNwsHourlyForecast,
++  fetchWindToolkitDay,
++} from "./weather.js";
++
++const labels = { data_status: DATA_STATUS, disclaimer: DISCLAIMER };
++const clone = (value) => structuredClone(value);
++const percent = (value) => `${Math.round(value * 100)}%`;
++
++async function calculate({
++  weatherSource = "demo",
++  windMultiplier = 1,
++  exportCapacityMw,
++  batteryEnabled,
++} = {}) {
++  const turbines = clone(turbinesFixture.turbines);
++  const forecast =
++    weatherSource === "nws" ? await fetchNwsHourlyForecast() : clone(forecastFixture.hours);
++  const grid = clone(gridFixture.grid_interconnection);
++  const battery = clone(batteryFixture.battery);
++
++  for (const hour of forecast) {
++    hour.wind_speed_m_s *= windMultiplier;
++    hour.gust_speed_m_s *= windMultiplier;
++  }
++  if (exportCapacityMw != null) grid.export_limit_mw = exportCapacityMw;
++  if (batteryEnabled != null) battery.enabled = batteryEnabled;
++
++  const result = runTwin(turbines, forecast, grid.export_limit_mw, battery);
++  result.weather_source = weatherSource;
++  const byId = Object.fromEntries(turbines.map((turbine) => [turbine.id, turbine]));
++  for (const calculated of result.turbines) {
++    const source = byId[calculated.id];
++    for (const field of [
++      "latitude",
++      "longitude",
++      "vibration_mm_s",
++      "bearing_temperature_c",
++      "days_since_maintenance",
++      "baseline_health_status",
++    ]) {
++      calculated[field] = source[field];
++    }
++  }
++  return { result, forecast, turbines, grid, battery };
++}
++
++const peakGeneration = (dispatch) => Math.max(...dispatch.map((hour) => hour.gross_generation_mw));
++const overloadHours = (dispatch, capacity) =>
++  dispatch.filter((hour) => hour.gross_generation_mw > capacity).length;
++
++function recommendations(result) {
++  const items = result.turbines.map((turbine) => ({
++    action: turbine.recommendation,
++    turbine_id: turbine.id,
++    timestamp_utc: null,
++    reason:
++      turbine.recommendation === "inspect now"
++        ? `Illustrative failure risk is ${percent(turbine.failure_risk)}, at or above the inspect-now threshold.`
++        : `Risk is below the inspect-now threshold; use the lowest-generation window at ${result.maintenance_window.timestamp_utc}.`,
++    details: {
++      failure_risk: turbine.failure_risk,
++      energy_at_risk_mwh: turbine.energy_at_risk_mwh,
++      energy_at_risk_rank: turbine.energy_at_risk_rank,
++    },
++  }));
++  for (const hour of result.dispatch) {
++    if (hour.battery_charge_mw > 0) {
++      items.push({
++        action: "use battery storage",
++        turbine_id: null,
++        timestamp_utc: hour.timestamp_utc,
++        reason: "Charge the enabled battery to absorb grid export overload first.",
++        details: { charge_mw: hour.battery_charge_mw },
++      });
++    }
++    for (const curtailed of hour.curtailed_turbines) {
++      items.push({
++        action: "curtail low-priority turbine",
++        turbine_id: curtailed.turbine_id,
++        timestamp_utc: hour.timestamp_utc,
++        reason: curtailed.reason,
++        details: { curtailed_mw: curtailed.curtailed_mw },
++      });
++    }
++  }
++  return items;
++}
++
++export const localApi = {
++  async overview(source = "demo") {
++    const { result, turbines, grid } = await calculate({ weatherSource: source });
++    return {
++      ...labels,
++      weather_source: source,
++      turbine_count: turbines.length,
++      expected_energy_mwh: result.expected_energy_mwh,
++      energy_at_risk_mwh: result.energy_at_risk_mwh,
++      grid_export_capacity_mw: grid.export_limit_mw,
++      peak_generation_mw: peakGeneration(result.dispatch),
++      overload_hours: overloadHours(result.dispatch, grid.export_limit_mw),
++      turbines_requiring_inspection: result.turbines.filter(
++        (turbine) => turbine.recommendation === "inspect now",
++      ).length,
++      maintenance_window: result.maintenance_window,
++    };
++  },
++
++  async turbines(source = "demo") {
++    const { result } = await calculate({ weatherSource: source });
++    return {
++      ...labels,
++      weather_source: source,
++      turbines: result.turbines,
++      ranking_by_energy_at_risk: result.turbine_ranking_by_energy_at_risk,
++    };
++  },
++
++  async turbine(id, source = "demo") {
++    const { result } = await calculate({ weatherSource: source });
++    const turbine = result.turbines.find((item) => item.id === id);
++    if (!turbine) throw new Error(`Unknown turbine ID: ${id}`);
++    return { ...labels, weather_source: source, turbine };
++  },
++
++  async forecast(source = "demo") {
++    const { result, forecast } = await calculate({ weatherSource: source });
++    return {
++      ...labels,
++      weather_source: source,
++      hours: forecast.map((weather, index) => {
++        const dispatch = result.dispatch[index];
++        return {
++          timestamp_utc: weather.timestamp_utc,
++          wind_speed_m_s: weather.wind_speed_m_s,
++          gust_speed_m_s: weather.gust_speed_m_s,
++          gust_estimated: weather.gust_estimated ?? false,
++          gross_generation_mw: dispatch.gross_generation_mw,
++          grid_export_mw: dispatch.grid_export_mw,
++          battery_charge_mw: dispatch.battery_charge_mw,
++          curtailed_generation_mw: dispatch.curtailed_generation_mw,
++        };
++      }),
++    };
++  },
++
++  async grid(source = "demo") {
++    const { result, grid, battery } = await calculate({ weatherSource: source });
++    return {
++      ...labels,
++      weather_source: source,
++      export_capacity_mw: grid.export_limit_mw,
++      peak_generation_mw: peakGeneration(result.dispatch),
++      overload_hours: overloadHours(result.dispatch, grid.export_limit_mw),
++      battery_enabled: battery.enabled,
++      battery_capacity_mwh: battery.capacity_mwh,
++      battery_initial_state_of_charge_mwh: battery.state_of_charge_mwh,
++      battery_final_state_of_charge_mwh: result.battery_final_state_of_charge_mwh,
++      dispatch: result.dispatch,
++    };
++  },
++
++  async recommendations(source = "demo") {
++    const { result } = await calculate({ weatherSource: source });
++    return { ...labels, weather_source: source, recommendations: recommendations(result) };
++  },
++
++  async scenario(scenario) {
++    const { result } = await calculate({
++      weatherSource: scenario.weather_source,
++      windMultiplier: scenario.wind_multiplier,
++      exportCapacityMw: scenario.export_capacity_mw,
++      batteryEnabled: scenario.battery_enabled,
++    });
++    return { ...result, scenario };
++  },
++
++  async windToolkit(year, dayOfYear) {
++    return {
++      data_status: "HISTORICAL WIND TOOLKIT DATA",
++      disclaimer:
++        "Historical WIND Toolkit resource data; not a current forecast or dispatch instruction.",
++      year,
++      day_of_year: dayOfYear,
++      latitude: FARM_LATITUDE,
++      longitude: FARM_LONGITUDE,
++      hours: await fetchWindToolkitDay(year, dayOfYear),
++    };
++  },
++};
+diff --git a/PalmettoHacks-DT/frontend/src/standalone/twinEngine.js b/PalmettoHacks-DT/frontend/src/standalone/twinEngine.js
+new file mode 100644
+index 0000000..f361199
+--- /dev/null
++++ b/PalmettoHacks-DT/frontend/src/standalone/twinEngine.js
+@@ -0,0 +1,215 @@
++// Browser port of backend/services/twin_engine.py so the dashboard can run
++// without the FastAPI server. Keep the two implementations in sync.
++
++const CUT_IN_WIND_SPEED_M_S = 3.0;
++const RATED_WIND_SPEED_M_S = 12.0;
++const CUT_OUT_WIND_SPEED_M_S = 25.0;
++const INSPECT_NOW_RISK_THRESHOLD = 0.7;
++export const DATA_STATUS = "SIMULATED DEMO DATA";
++export const DISCLAIMER =
++  "Prototype results use simulated operational data and are not safety or dispatch instructions.";
++
++const RISK_WEIGHTS = {
++  vibration: 0.4,
++  bearing_temperature: 0.3,
++  maintenance_age: 0.2,
++  gust_severity: 0.1,
++};
++
++const round6 = (value) => Math.round(value * 1e6) / 1e6;
++const clamp = (value) => Math.min(1, Math.max(0, value));
++const sum = (values) => values.reduce((total, value) => total + value, 0);
++const percent = (value) => `${Math.round(value * 100)}%`;
++
++function number(value, field, minimum = 0) {
++  if (typeof value !== "number" || !Number.isFinite(value) || value < minimum) {
++    throw new Error(`${field} must be finite and at least ${minimum}.`);
++  }
++  return value;
++}
++
++function requiredNumber(record, field, minimum = 0) {
++  if (!(field in record)) throw new Error(`Missing required field: ${field}.`);
++  return number(record[field], field, minimum);
++}
++
++export function powerFromWind(windSpeed, ratedPower) {
++  if (windSpeed < CUT_IN_WIND_SPEED_M_S || windSpeed >= CUT_OUT_WIND_SPEED_M_S) return 0;
++  if (windSpeed >= RATED_WIND_SPEED_M_S) return ratedPower;
++  const cutInCubed = CUT_IN_WIND_SPEED_M_S ** 3;
++  const ratedCubed = RATED_WIND_SPEED_M_S ** 3;
++  return ratedPower * ((windSpeed ** 3 - cutInCubed) / (ratedCubed - cutInCubed));
++}
++
++function failureRisk(turbine, forecast) {
++  const vibration = requiredNumber(turbine, "vibration_mm_s");
++  const temperature = requiredNumber(turbine, "bearing_temperature_c");
++  const rotorRpm = requiredNumber(turbine, "rotor_rpm");
++  const maintenanceAge = requiredNumber(turbine, "days_since_maintenance");
++  const maximumGust = Math.max(...forecast.map((hour) => hour.gust_speed_m_s));
++  const severity = {
++    vibration: clamp(vibration / 10),
++    bearing_temperature: clamp((temperature - 60) / 40),
++    maintenance_age: clamp(maintenanceAge / 365),
++    gust_severity: clamp(maximumGust / CUT_OUT_WIND_SPEED_M_S),
++  };
++  const weighted = Object.fromEntries(
++    Object.entries(severity).map(([name, score]) => [name, round6(score * RISK_WEIGHTS[name])]),
++  );
++  return {
++    failure_risk: round6(clamp(sum(Object.values(weighted)))),
++    risk_components: severity,
++    weighted_risk_components: weighted,
++    rotor_rpm: rotorRpm,
++    explanation:
++      `Illustrative weighted score: vibration ${percent(severity.vibration)}, ` +
++      `bearing temperature ${percent(severity.bearing_temperature)}, ` +
++      `maintenance age ${percent(severity.maintenance_age)}, and ` +
++      `maximum forecast gust ${percent(severity.gust_severity)}. ` +
++      "Rotor RPM is shown as context and is not weighted.",
++  };
++}
++
++export function runTwin(turbines, hourlyForecast, gridExportCapacity, battery) {
++  if (!turbines.length) throw new Error("turbines must contain at least one turbine.");
++  if (!hourlyForecast.length) throw new Error("hourly_forecast must contain at least one hour.");
++  const forecast = hourlyForecast.map((hour) => ({
++    ...hour,
++    wind_speed_m_s: requiredNumber(hour, "wind_speed_m_s"),
++    gust_speed_m_s: requiredNumber(hour, "gust_speed_m_s"),
++  }));
++  const gridCapacity = number(gridExportCapacity, "grid_export_capacity_mw");
++  if (gridCapacity <= 0) throw new Error("grid_export_capacity_mw must be greater than zero.");
++
++  const turbineResults = [];
++  const hourlyTurbinePower = forecast.map(() => []);
++  turbines.forEach((turbine, index) => {
++    const turbineId = turbine.id ?? `WT-${String(index + 1).padStart(2, "0")}`;
++    const ratedPower = requiredNumber(turbine, "rated_power_mw");
++    const risk = failureRisk(turbine, forecast);
++    const hourlyPower = forecast.map((hour) => powerFromWind(hour.wind_speed_m_s, ratedPower));
++    hourlyPower.forEach((power, hourIndex) => hourlyTurbinePower[hourIndex].push(power));
++    const expectedEnergy = sum(hourlyPower);
++    turbineResults.push({
++      id: turbineId,
++      name: turbine.name ?? turbineId,
++      rated_power_mw: ratedPower,
++      rotor_rpm: risk.rotor_rpm,
++      failure_risk: risk.failure_risk,
++      risk_components: risk.risk_components,
++      weighted_risk_components: risk.weighted_risk_components,
++      risk_explanation: risk.explanation,
++      expected_energy_mwh: round6(expectedEnergy),
++      energy_at_risk_mwh: round6(risk.failure_risk * expectedEnergy),
++      hourly_generation_mw: hourlyPower.map(round6),
++      recommendation:
++        risk.failure_risk >= INSPECT_NOW_RISK_THRESHOLD
++          ? "inspect now"
++          : "schedule maintenance during the lowest-generation window",
++    });
++  });
++
++  const byId = (left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
++  const ranked = [...turbineResults].sort(
++    (left, right) => right.energy_at_risk_mwh - left.energy_at_risk_mwh || byId(left, right),
++  );
++  ranked.forEach((result, index) => {
++    result.energy_at_risk_rank = index + 1;
++  });
++
++  const farmGeneration = hourlyTurbinePower.map(sum);
++  let maintenanceIndex = 0;
++  farmGeneration.forEach((generation, index) => {
++    if (generation < farmGeneration[maintenanceIndex]) maintenanceIndex = index;
++  });
++
++  const batteryEnabled = Boolean(battery?.enabled);
++  const capacity = battery?.capacity_mwh ?? 0;
++  let stateOfCharge = battery?.state_of_charge_mwh ?? 0;
++  const maxChargeRate = battery?.max_charge_rate_mw ?? 0;
++  const chargeEfficiency = Math.sqrt(battery?.round_trip_efficiency ?? 1);
++  const curtailmentOrder = [...turbineResults.keys()].sort(
++    (left, right) =>
++      turbineResults[left].energy_at_risk_mwh - turbineResults[right].energy_at_risk_mwh ||
++      byId(turbineResults[left], turbineResults[right]),
++  );
++
++  const dispatch = forecast.map((hour, hourIndex) => {
++    const turbinePowers = hourlyTurbinePower[hourIndex];
++    const grossGeneration = farmGeneration[hourIndex];
++    const overload = Math.max(0, grossGeneration - gridCapacity);
++    let chargePower = 0;
++    if (batteryEnabled && overload > 0) {
++      const roomForChargeInput = (capacity - stateOfCharge) / chargeEfficiency;
++      chargePower = Math.min(overload, maxChargeRate, roomForChargeInput);
++      stateOfCharge += chargePower * chargeEfficiency;
++    }
++
++    let remainingOverload = Math.max(0, overload - chargePower);
++    const curtailed = [];
++    if (remainingOverload > 0) {
++      for (const turbineIndex of curtailmentOrder) {
++        const curtailedPower = Math.min(turbinePowers[turbineIndex], remainingOverload);
++        if (curtailedPower > 0) {
++          curtailed.push({
++            turbine_id: turbineResults[turbineIndex].id,
++            curtailed_mw: round6(curtailedPower),
++            reason: "lowest energy-at-risk priority curtailed first",
++          });
++          remainingOverload -= curtailedPower;
++        }
++        if (remainingOverload <= 1e-9) break;
++      }
++    }
++
++    const curtailedTotal = sum(curtailed.map((item) => item.curtailed_mw));
++    return {
++      timestamp_utc: hour.timestamp_utc ?? null,
++      hour_index: hourIndex,
++      gross_generation_mw: round6(grossGeneration),
++      grid_export_capacity_mw: gridCapacity,
++      battery_charge_mw: round6(chargePower),
++      battery_state_of_charge_mwh: round6(stateOfCharge),
++      curtailed_generation_mw: round6(curtailedTotal),
++      curtailed_turbines: curtailed,
++      grid_export_mw: round6(Math.max(0, grossGeneration - chargePower - curtailedTotal)),
++      explanation:
++        overload > 0
++          ? "Battery charging absorbed overload before curtailment; remaining overload was " +
++            "curtailed from lowest energy-at-risk priority turbines first."
++          : "Generation is within the grid export capacity.",
++    };
++  });
++
++  return {
++    data_status: DATA_STATUS,
++    disclaimer: DISCLAIMER,
++    risk_method: {
++      weights: RISK_WEIGHTS,
++      normalization: {
++        vibration: "clamp(vibration_mm_s / 10)",
++        bearing_temperature: "clamp((bearing_temperature_c - 60) / 40)",
++        maintenance_age: "clamp(days_since_maintenance / 365)",
++        gust_severity: "clamp(max_forecast_gust_speed_m_s / 25)",
++      },
++      inspect_now_threshold: INSPECT_NOW_RISK_THRESHOLD,
++    },
++    energy_assumption: "Each forecast entry represents one hour; hourly MW is summed as MWh.",
++    expected_energy_mwh: round6(sum(turbineResults.map((result) => result.expected_energy_mwh))),
++    energy_at_risk_mwh: round6(sum(turbineResults.map((result) => result.energy_at_risk_mwh))),
++    maintenance_window: {
++      hour_index: maintenanceIndex,
++      timestamp_utc: forecast[maintenanceIndex].timestamp_utc ?? null,
++      predicted_farm_generation_mw: round6(farmGeneration[maintenanceIndex]),
++      explanation: "Lowest predicted gross farm generation in the forecast.",
++    },
++    turbines: [...turbineResults].sort(byId),
++    turbine_ranking_by_energy_at_risk: ranked.map((result) => ({
++      rank: result.energy_at_risk_rank,
++      turbine_id: result.id,
++      energy_at_risk_mwh: result.energy_at_risk_mwh,
++    })),
++    dispatch,
++    battery_final_state_of_charge_mwh: round6(stateOfCharge),
++  };
++}
+diff --git a/PalmettoHacks-DT/frontend/src/standalone/weather.js b/PalmettoHacks-DT/frontend/src/standalone/weather.js
+new file mode 100644
+index 0000000..9fe1a33
+--- /dev/null
++++ b/PalmettoHacks-DT/frontend/src/standalone/weather.js
+@@ -0,0 +1,150 @@
++// Browser versions of backend/services/weather_provider.py. api.weather.gov
++// allows cross-origin requests, so the live forecast works without a server.
++
++const NWS_API_BASE = "https://api.weather.gov";
++const NREL_WIND_TOOLKIT_URL =
++  "https://developer.nrel.gov/api/wind-toolkit/v2/wind/wtk-download.csv";
++export const FARM_LATITUDE = Number(import.meta.env.VITE_WEATHER_LATITUDE ?? 34.054);
++export const FARM_LONGITUDE = Number(import.meta.env.VITE_WEATHER_LONGITUDE ?? -81.063);
++const NWS_CACHE_MS = 15 * 60 * 1000;
++
++let nwsCache = null;
++
++function windSpeedToMS(value) {
++  if (typeof value === "string" && ["calm", "calm winds"].includes(value.trim().toLowerCase())) {
++    return 0;
++  }
++  let values;
++  let unit = "mph";
++  if (typeof value === "number") {
++    values = [value];
++  } else if (typeof value === "string") {
++    values = (value.match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
++    const lowered = value.toLowerCase();
++    if (lowered.includes("km/h") || lowered.includes("kph")) unit = "km/h";
++    else if (lowered.includes("knot") || /\bkt\b/.test(lowered)) unit = "knots";
++    else if (lowered.includes("m/s")) unit = "m/s";
++  }
++  if (!values?.length) throw new Error(`Unrecognized wind speed value: ${value}`);
++  const factors = { mph: 0.44704, "km/h": 1 / 3.6, knots: 0.514444, "m/s": 1 };
++  const speed = (values.reduce((total, item) => total + item, 0) / values.length) * factors[unit];
++  return Math.round(speed * 100) / 100;
++}
++
++async function getJson(url) {
++  const response = await fetch(url, { headers: { Accept: "application/geo+json" } });
++  if (!response.ok) throw new Error(`NWS forecast request failed (${response.status}).`);
++  return response.json();
++}
++
++async function fetchNwsUncached(hours) {
++  const point = await getJson(
++    `${NWS_API_BASE}/points/${FARM_LATITUDE.toFixed(4)},${FARM_LONGITUDE.toFixed(4)}`,
++  );
++  const hourlyUrl = point?.properties?.forecastHourly;
++  if (typeof hourlyUrl !== "string" || new URL(hourlyUrl).hostname !== "api.weather.gov") {
++    throw new Error("NWS point response contained an invalid hourly URL.");
++  }
++  const forecast = await getJson(hourlyUrl);
++  const periods = forecast?.properties?.periods;
++  if (!Array.isArray(periods)) throw new Error("NWS hourly response has no forecast periods.");
++
++  const cutoff = Date.now() + hours * 3600 * 1000;
++  const rows = [];
++  for (const period of periods) {
++    const timestamp = new Date(period.startTime);
++    if (timestamp.getTime() > cutoff) continue;
++    const wind = windSpeedToMS(period.windSpeed);
++    const gustValue = period.windGust;
++    const gust = gustValue != null ? windSpeedToMS(gustValue) : Math.round(wind * 125) / 100;
++    rows.push({
++      timestamp_utc: timestamp.toISOString(),
++      wind_speed_m_s: wind,
++      gust_speed_m_s: Math.max(wind, gust),
++      gust_estimated: gustValue == null,
++      data_status: "LIVE NWS FORECAST",
++    });
++    if (rows.length === hours) break;
++  }
++  if (!rows.length) throw new Error("NWS returned no usable hourly wind forecast.");
++  return rows;
++}
++
++export async function fetchNwsHourlyForecast(hours = 24) {
++  if (!nwsCache || nwsCache.expiresAt <= Date.now()) {
++    const promise = fetchNwsUncached(hours);
++    nwsCache = { expiresAt: Date.now() + NWS_CACHE_MS, promise };
++    promise.catch(() => {
++      if (nwsCache?.promise === promise) nwsCache = null;
++    });
++  }
++  const rows = await nwsCache.promise;
++  return rows.map((row) => ({ ...row }));
++}
++
++function parseWindToolkitCsv(csvText, year, dayOfYear) {
++  const lines = csvText.split(/\r?\n/).map((line) => line.split(",").map((cell) => cell.trim()));
++  const headerIndex = lines.findIndex((row) => {
++    const lowered = new Set(row.map((cell) => cell.toLowerCase()));
++    return ["year", "month", "day", "hour"].every((name) => lowered.has(name));
++  });
++  if (headerIndex < 0) throw new Error("WIND Toolkit response did not contain a CSV data header.");
++  const header = lines[headerIndex];
++  const indices = Object.fromEntries(header.map((name, index) => [name.toLowerCase(), index]));
++  const windIndex = header.findIndex((name) => {
++    const normalized = name.toLowerCase().replaceAll("_", " ");
++    return normalized.includes("wind speed") && !normalized.includes("direction");
++  });
++  if (windIndex < 0) throw new Error("WIND Toolkit CSV did not include a recognizable wind speed column.");
++
++  const target = new Date(Date.UTC(year, 0, dayOfYear));
++  const rows = [];
++  for (const row of lines.slice(headerIndex + 1)) {
++    if (row.length < header.length) continue;
++    const [y, m, d, h] = ["year", "month", "day", "hour"].map((name) => Number(row[indices[name]]));
++    const speed = Number(row[windIndex]);
++    if (![y, m, d, h, speed].every(Number.isFinite)) continue;
++    if (y === target.getUTCFullYear() && m === target.getUTCMonth() + 1 && d === target.getUTCDate()) {
++      rows.push({
++        timestamp_utc: new Date(Date.UTC(y, m - 1, d, h % 24)).toISOString(),
++        wind_speed_m_s: Math.round(speed * 100) / 100,
++        data_status: "HISTORICAL WIND TOOLKIT DATA",
++      });
++    }
++  }
++  if (rows.length !== 24) {
++    throw new Error(`WIND Toolkit returned ${rows.length} hourly values, expected 24.`);
++  }
++  return rows;
++}
++
++// The NREL key ships in the browser bundle, so only use a free, rate-limited key.
++export async function fetchWindToolkitDay(year, dayOfYear) {
++  const apiKey = import.meta.env.VITE_NREL_API_KEY;
++  if (!apiKey) {
++    throw new Error(
++      "Historical WIND Toolkit data is unavailable in this deployment. Set VITE_NREL_API_KEY to enable it.",
++    );
++  }
++  const params = new URLSearchParams({
++    api_key: apiKey,
++    wkt: `POINT(${FARM_LONGITUDE.toFixed(5)} ${FARM_LATITUDE.toFixed(5)})`,
++    names: String(year),
++    utc: "true",
++    leap_day: "true",
++    interval: "60",
++    attributes: "wind_speed",
++  });
++  let response;
++  try {
++    response = await fetch(`${NREL_WIND_TOOLKIT_URL}?${params}`);
++  } catch (error) {
++    throw new Error("NREL WIND Toolkit network request failed.", { cause: error });
++  }
++  if (!response.ok) {
++    throw new Error(
++      `NREL WIND Toolkit returned HTTP ${response.status}. Check the API key and query limits.`,
++    );
++  }
++  return parseWindToolkitCsv(await response.text(), year, dayOfYear);
++}
+diff --git a/PalmettoHacks-DT/frontend/vercel.json b/PalmettoHacks-DT/frontend/vercel.json
+new file mode 100644
+index 0000000..4974736
+--- /dev/null
++++ b/PalmettoHacks-DT/frontend/vercel.json
+@@ -0,0 +1,6 @@
++{
++  "$schema": "https://openapi.vercel.sh/vercel.json",
++  "framework": "vite",
++  "buildCommand": "npm run build",
++  "outputDirectory": "dist"
++}
+diff --git a/PalmettoHacks-DT/frontend/vite.config.js b/PalmettoHacks-DT/frontend/vite.config.js
+index bf0ac93..7efe3b9 100644
+--- a/PalmettoHacks-DT/frontend/vite.config.js
++++ b/PalmettoHacks-DT/frontend/vite.config.js
+@@ -1,27 +1,29 @@
+-import { defineConfig } from "vite";
+-import react from "@vitejs/plugin-react";
+-
+-export default defineConfig({
+-  plugins: [react()],
+-  server: {
+-    host: "0.0.0.0",
+-    port: 5173,
+-    proxy: {
+-      "/api": {
+-        target: "http://127.0.0.1:8000",
+-        changeOrigin: true,
+-      },
+-    },
+-  },
+-  build: {
+-    rollupOptions: {
+-      output: {
+-        manualChunks(id) {
+-          if (id.includes("/node_modules/recharts/")) return "recharts";
+-          if (id.includes("/node_modules/d3-")) return "d3";
+-          if (id.includes("/node_modules/victory-vendor/")) return "chart-vendor";
+-        },
+-      },
+-    },
+-  },
+-});
++import { defineConfig } from "vite";
++import react from "@vitejs/plugin-react";
++
++export default defineConfig({
++  plugins: [react()],
++  server: {
++    host: "0.0.0.0",
++    port: 5173,
++    // Standalone mode imports the shared fixtures from ../data.
++    fs: { allow: [".."] },
++    proxy: {
++      "/api": {
++        target: "http://127.0.0.1:8000",
++        changeOrigin: true,
++      },
++    },
++  },
++  build: {
++    rollupOptions: {
++      output: {
++        manualChunks(id) {
++          if (id.includes("/node_modules/recharts/")) return "recharts";
++          if (id.includes("/node_modules/d3-")) return "d3";
++          if (id.includes("/node_modules/victory-vendor/")) return "chart-vendor";
++        },
++      },
++    },
++  },
++});
+-- 
+2.43.0
+
