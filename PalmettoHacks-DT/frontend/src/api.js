@@ -1,12 +1,13 @@
 import { localApi } from "./standalone/localApi.js";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+const API_BASE = import.meta.env.PROD
+  ? "/api"
+  : (import.meta.env.VITE_API_BASE_URL ?? "/api");
 
-// Production builds without VITE_API_BASE_URL (for example a static Vercel
-// deploy) run the twin model in the browser instead of calling FastAPI.
+// Use the server API by default so provider credentials stay on the backend.
+// Standalone mode is available only during development, never in deployments.
 export const STANDALONE =
-  import.meta.env.VITE_STANDALONE === "true" ||
-  (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL);
+  !import.meta.env.PROD && import.meta.env.VITE_STANDALONE === "true";
 
 async function request(path, options = {}) {
   let response;
