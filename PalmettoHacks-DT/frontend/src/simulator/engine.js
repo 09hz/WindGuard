@@ -27,19 +27,16 @@ export const DEFAULT_WEATHER = {
   temperature: 18,
 };
 
+// Sized for the three wired turbines (12.6 MW installed).
 export const DEFAULT_GRID = {
-  exportLimit: 20,
+  exportLimit: 10,
   batteryEnabled: true,
-  batteryCapacity: 20,
-  batteryRate: 5,
+  batteryCapacity: 8,
+  batteryRate: 2,
   batteryEfficiency: 0.9,
 };
 
-export function makeTurbine(x, y, existing = [], overrides = {}) {
-  const used = new Set(existing.map((turbine) => turbine.id));
-  let number = 1;
-  while (used.has(`T-${String(number).padStart(2, "0")}`)) number += 1;
-  const id = `T-${String(number).padStart(2, "0")}`;
+function makeTurbine(id, x, y, overrides = {}) {
   return {
     id,
     x,
@@ -54,19 +51,14 @@ export function makeTurbine(x, y, existing = [], overrides = {}) {
   };
 }
 
+// The three turbines wired to the QNX base are the whole simulation. T-03 starts
+// worn so storms push it toward a trip.
 export function defaultLayout() {
-  // Two staggered rows about 5 rotor diameters apart along the westerly wind.
-  const positions = [
-    [350, 420], [1000, 470], [1650, 420], [2200, 470],
-    [350, 980], [1000, 930], [1650, 980],
+  return [
+    makeTurbine("T-01", 600, 330),
+    makeTurbine("T-02", 1300, 700, { daysSinceMaintenance: 240 }),
+    makeTurbine("T-03", 600, 1070, { vibration: 6.8, bearingTemp: 84, daysSinceMaintenance: 300 }),
   ];
-  const layout = [];
-  for (const [x, y] of positions) layout.push(makeTurbine(x, y, layout));
-  layout[2].vibration = 6.8;
-  layout[2].bearingTemp = 84;
-  layout[2].daysSinceMaintenance = 300;
-  layout[5].daysSinceMaintenance = 240;
-  return layout;
 }
 
 export function initialState(turbines = defaultLayout()) {

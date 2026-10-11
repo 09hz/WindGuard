@@ -154,7 +154,7 @@ export function GridControls({ grid, setGrid, batterySoc }) {
   const update = (changes) => setGrid((current) => ({ ...current, ...changes }));
   return (
     <Section title="Grid & storage">
-      <Slider id="export-limit" label="Export limit" value={grid.exportLimit} display={`${grid.exportLimit} MW`} min={5} max={60} onChange={(exportLimit) => update({ exportLimit })} />
+      <Slider id="export-limit" label="Export limit" value={grid.exportLimit} display={`${grid.exportLimit} MW`} min={1} max={15} onChange={(exportLimit) => update({ exportLimit })} />
       <Toggle id="battery" label="Battery storage" checked={grid.batteryEnabled} onChange={(batteryEnabled) => update({ batteryEnabled })} />
       <div>
         <div className="flex justify-between text-[11px] text-slate-400">
@@ -182,9 +182,11 @@ export function TurbineInspector({ turbine, reading, onEdit, onRemove }) {
     <Section
       title={`Turbine ${turbine.id}`}
       trailing={
-        <button type="button" onClick={() => onRemove(turbine.id)} className="flex items-center gap-1 text-[10px] text-slate-500 transition hover:text-danger" aria-label={`Remove ${turbine.id}`}>
-          <Trash2 size={12} /> Remove
-        </button>
+        onRemove && (
+          <button type="button" onClick={() => onRemove(turbine.id)} className="flex items-center gap-1 text-[10px] text-slate-500 transition hover:text-danger" aria-label={`Remove ${turbine.id}`}>
+            <Trash2 size={12} /> Remove
+          </button>
+        )
       }
     >
       {reading && (
