@@ -21,9 +21,9 @@ OpenDSS feeder simulation.
 | `generate_data.py` | Regenerates the seeded demo fixtures |
 
 The FastAPI backend and JavaScript standalone implementation use the same demo
-fixtures and provide matching dashboard data. The standalone implementation is
-intended for static frontend deployments; the backend is useful for local
-development and deployments that need server-side provider credentials.
+fixtures and provide matching dashboard data. The frontend uses the FastAPI
+backend in production so provider credentials remain server-side. Standalone
+mode is an opt-in for local development without a backend.
 
 ## Requirements
 
@@ -164,18 +164,14 @@ interconnection or protection study.
 
 ## Deployment
 
-Two frontend deployment modes are available:
-
-- **Static frontend:** use `PalmettoHacks-DT/frontend` as the Vercel root
-  directory. With no `VITE_API_BASE_URL`, production builds use the
-  in-browser standalone model and do not need the FastAPI service. Its NREL
-  integration requires `VITE_NREL_API_KEY`, which is public in the built
-  browser bundle; only use a key that is safe to expose.
-- **Multiple Vercel services:** the workspace-root `vercel.json` defines the
-  FastAPI backend and Vite frontend with `/api/*` routed to the backend. Set
-  `VITE_API_BASE_URL=/api` in the frontend build environment to use that
-  backend rather than the standalone model, and configure backend secrets in
-  Vercel project settings.
+Use the workspace root as the Vercel project root so Vercel reads the root
+`vercel.json`, builds both services, and routes `/api/*` to FastAPI. The
+frontend calls `/api` by default; do not set `VITE_STANDALONE=true` for this
+deployment. In Vercel Project Settings → Environment Variables, add
+`NREL_API_KEY` and `NREL_API_EMAIL` for the Preview and Production deployment
+environments. The backend reads these server-side variables; do not use `VITE_`
+prefixes or put the credentials in frontend code. Redeploy after saving the
+variables so the backend runtime receives them.
 
 Use `vercel dev` from the workspace root to exercise the multi-service
 configuration locally. For deployment details and current configuration, see
