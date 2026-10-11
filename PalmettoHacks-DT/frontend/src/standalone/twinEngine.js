@@ -41,7 +41,7 @@ export function powerFromWind(windSpeed, ratedPower) {
   return ratedPower * ((windSpeed ** 3 - cutInCubed) / (ratedCubed - cutInCubed));
 }
 
-function failureRisk(turbine, forecast) {
+export function failureRisk(turbine, forecast) {
   const vibration = requiredNumber(turbine, "vibration_mm_s");
   const temperature = requiredNumber(turbine, "bearing_temperature_c");
   const rotorRpm = requiredNumber(turbine, "rotor_rpm");
