@@ -1,4 +1,4 @@
-"""Transparent heuristic calculations for the WindGuard Twin backend demo."""
+"""Transparent heuristic calculations for the Twind backend demo."""
 
 from __future__ import annotations
 

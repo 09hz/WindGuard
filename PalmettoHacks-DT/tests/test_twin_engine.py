@@ -1,4 +1,4 @@
-"""Focused tests for WindGuard Twin heuristic calculations."""
+"""Focused tests for Twind heuristic calculations."""
 
 import pytest
 

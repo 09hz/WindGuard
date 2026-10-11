@@ -47,7 +47,7 @@ NREL_WIND_TOOLKIT_URL = (
 FARM_LATITUDE = float(_environment_value("WEATHER_LATITUDE", "34.054"))
 FARM_LONGITUDE = float(_environment_value("WEATHER_LONGITUDE", "-81.063"))
 NWS_USER_AGENT = _environment_value(
-    "NWS_USER_AGENT", "WindGuardTwin/0.1 (local hackathon demo)"
+    "NWS_USER_AGENT", "Twind/0.1 (local demo)"
 )
 
 

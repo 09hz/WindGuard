@@ -1,6 +1,6 @@
-# WindGuard Twin backend
+# Twind backend
 
-FastAPI service for the WindGuard Twin prototype. It reads the JSON fixtures in
+FastAPI service for the Twind prototype. It reads the JSON fixtures in
 the repository's top-level `data\` directory and computes illustrative turbine
 risk, energy, maintenance, and grid results. All values are **SIMULATED DEMO
 DATA**; this service is not safety-grade and does not connect to or control a

@@ -1,4 +1,4 @@
-"""FastAPI application exposing the WindGuard Twin simulated-data API."""
+"""FastAPI application exposing the Twind simulated-data API."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ from backend.services.weather_provider import (
 )
 
 app = FastAPI(
-    title="WindGuard Twin API",
+    title="Twind API",
     description=(
         "Prototype API using simulated wind-farm data. Results are not safety "
         "or dispatch instructions."

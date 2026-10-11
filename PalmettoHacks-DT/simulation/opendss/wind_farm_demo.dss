@@ -1,7 +1,7 @@
-! WindGuard Twin 10-turbine radial feeder demonstration.
+! Twind 10-turbine radial feeder demonstration.
 ! Illustrative low-voltage distribution model only; not a utility interconnection study.
 Clear
-New Circuit.WindGuard basekv=69 pu=1 phases=3 bus1=sourcebus frequency=60
+New Circuit.Twind basekv=69 pu=1 phases=3 bus1=sourcebus frequency=60
 New Transformer.Substation phases=3 windings=2 buses=[sourcebus.1.2.3 substation.1.2.3] conns=[delta wye] kvs=[69 12.47] kvas=[30000 30000] XHL=8 %Rs=[0.5 0.5]
 
 New Line.Feeder01 phases=3 bus1=substation.1.2.3 bus2=collector01.1.2.3 length=0.25 units=km r1=0.20 x1=0.30 r0=0.40 x0=0.90 c1=0 c0=0

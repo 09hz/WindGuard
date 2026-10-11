@@ -1,4 +1,4 @@
-"""Pydantic request and response models for the WindGuard Twin API."""
+"""Pydantic request and response models for the Twind API."""
 
 from __future__ import annotations
 

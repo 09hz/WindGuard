@@ -1005,7 +1005,7 @@ export default function App() {
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                <h1 className="text-sm font-semibold tracking-tight text-slate-100 sm:text-base">WindGuard Twin</h1>
+                <h1 className="text-sm font-semibold tracking-tight text-slate-100 sm:text-base">Twind</h1>
                 <span className="inline-flex flex-wrap items-center gap-1.5">
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-teal/15 bg-teal/[0.06] px-2 py-1 text-[8px] font-bold tracking-[0.11em] text-teal sm:text-[9px]">
                     <span className="h-1 w-1 animate-pulse rounded-full bg-teal" />
@@ -1171,7 +1171,7 @@ export default function App() {
 
         <footer className="mt-7 flex flex-col justify-between gap-2 border-t border-white/[0.06] pt-4 text-[10px] text-slate-600 sm:flex-row sm:items-center">
           <span>{DISCLAIMER}</span>
-          <span className="flex items-center gap-1.5"><Activity size={11} /> WindGuard Twin · prototype interface</span>
+          <span className="flex items-center gap-1.5"><Activity size={11} /> Twind · prototype interface</span>
         </footer>
       </main>
     </div>

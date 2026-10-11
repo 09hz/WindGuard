@@ -1,6 +1,6 @@
-# WindGuard Twin
+# Twind
 
-WindGuard Twin is a demonstration dashboard and API for exploring simulated
+Twind is a demonstration dashboard and API for exploring simulated
 wind-farm generation, turbine condition, maintenance priorities, and grid
 dispatch. It includes optional live weather integrations and an illustrative
 OpenDSS feeder simulation.

@@ -1,4 +1,4 @@
-"""Generate deterministic, clearly labeled demo fixtures for WindGuard Twin."""
+"""Generate deterministic, clearly labeled demo fixtures for Twind."""
 
 from __future__ import annotations
 

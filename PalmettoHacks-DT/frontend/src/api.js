@@ -20,7 +20,7 @@ async function request(path, options = {}) {
     });
   } catch (error) {
     throw new Error(
-      `Cannot reach the WindGuard API at ${API_BASE}. Start the FastAPI server and try again.`,
+      `Cannot reach the Twind API at ${API_BASE}. Start the FastAPI server and try again.`,
       { cause: error },
     );
   }

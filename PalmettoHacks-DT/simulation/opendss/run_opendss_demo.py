@@ -1,4 +1,4 @@
-"""Run the WindGuard Twin 24-hour demo through the OpenDSS engine."""
+"""Run the Twind 24-hour demo through the OpenDSS engine."""
 
 from __future__ import annotations
 

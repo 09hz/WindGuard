@@ -99,7 +99,7 @@ export default function SimulatorPage() {
               <Wind size={22} strokeWidth={1.7} />
             </div>
             <div className="min-w-0">
-              <h1 className="text-sm font-semibold tracking-tight text-slate-100 sm:text-base">WindGuard Twin</h1>
+              <h1 className="text-sm font-semibold tracking-tight text-slate-100 sm:text-base">Twind</h1>
               <div className="mt-0.5 hidden text-[10px] text-slate-500 sm:block">Turbine simulator · what-if sandbox</div>
             </div>
           </div>

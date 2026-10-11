@@ -1,6 +1,6 @@
-# WindGuard Twin frontend
+# Twind frontend
 
-React, Vite, Tailwind CSS, and Recharts dashboard for the WindGuard Twin
+React, Vite, Tailwind CSS, and Recharts dashboard for Twind
 simulated wind-farm demo.
 
 ## Run locally

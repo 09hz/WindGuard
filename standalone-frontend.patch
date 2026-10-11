@@ -74,7 +74,7 @@ index 2557638..9d469a2 100644
 -    });
 -  } catch (error) {
 -    throw new Error(
--      `Cannot reach the WindGuard API at ${API_BASE}. Start the FastAPI server and try again.`,
+-      `Cannot reach the Twind API at ${API_BASE}. Start the FastAPI server and try again.`,
 -      { cause: error },
 -    );
 -  }
@@ -131,7 +131,7 @@ index 2557638..9d469a2 100644
 +    });
 +  } catch (error) {
 +    throw new Error(
-+      `Cannot reach the WindGuard API at ${API_BASE}. Start the FastAPI server and try again.`,
++      `Cannot reach the Twind API at ${API_BASE}. Start the FastAPI server and try again.`,
 +      { cause: error },
 +    );
 +  }
@@ -826,4 +826,3 @@ index bf0ac93..7efe3b9 100644
 +});
 -- 
 2.43.0
-
