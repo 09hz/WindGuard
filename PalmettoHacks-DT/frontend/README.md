@@ -36,7 +36,7 @@ the live NWS hourly forecast. Turbine-condition fixtures remain simulated in
 both modes, and the header distinguishes them from live weather. The NREL WIND
 Toolkit button requests one historical 2012 day for contextual comparison;
 historical archive data is not used as a current forecast and requires
-`NREL_API_KEY` to be set in the backend environment.
+`NREL_API_KEY` and `NREL_API_EMAIL` to be set in the backend environment.
 
 Build and preview the production bundle:
 
