@@ -1,9 +1,8 @@
-// Catalog of the physical QNX test rig shown in the simulator's hardware zone.
+// Catalog of the QNX rig shown on the simulator map.
 // PLACEHOLDER SPECS: replace the names and numbers below with the team's real
 // parts. The hover cards read everything from here, so no UI changes are needed.
 
-export const QNX_ZONE = { x: 2440, width: 760 }; // metres within the site map
-export const QNX_BASE = { x: 3060, y: 700, width: 190, height: 330 };
+export const QNX_BASE = { x: 2260, y: 700, width: 190, height: 330 }; // metres within the site map
 export const CONTROL_LOOP_HZ = 100;
 
 export const BASE_PART = {
@@ -19,13 +18,13 @@ export const BASE_PART = {
 };
 
 export const TURBINE_PART = {
-  title: "Bench model turbine",
-  hardware: "3-blade model turbine with 12 V DC generator",
-  role: "A physical turbine on the bench. It is driven by a fixed fan, so the simulator's weather controls do not affect it.",
+  title: "Wind turbine",
+  hardware: "3-blade utility turbine with four sensors wired to the QNX base",
+  role: "Responds to the simulator's weather, wakes from the other turbines, and its own condition. Click it to change that condition.",
   specs: [
-    ["Rotor diameter", "30 cm"],
-    ["Rated output", "5 W at 12 V"],
-    ["Drive", "Desk fan at constant speed"],
+    ["Rotor diameter", "120 m"],
+    ["Cut-in / rated / cut-out", "3 / 12 / 25 m/s"],
+    ["Trips offline at", "90% failure risk"],
   ],
 };
 
@@ -41,28 +40,28 @@ export const SENSOR_PARTS = {
       ["Range", "±4 g"],
     ],
     unit: "mm/s",
-    key: "vibration",
+    key: "liveVibration",
     warn: 4.5,
   },
   temperature: {
     letter: "T",
     title: "Bearing temperature sensor",
     hardware: "DS18B20 digital thermometer",
-    role: "Clamped to the generator bearing housing. Heat build-up under steady load points to lubrication or wear problems.",
+    role: "Clamped to the main bearing housing. Heat build-up under steady load points to lubrication or wear problems.",
     specs: [
       ["Bus", "1-Wire"],
       ["Sample rate", "1 Hz"],
       ["Accuracy", "±0.5 °C"],
     ],
     unit: "°C",
-    key: "bearingTemp",
-    warn: 45,
+    key: "liveBearingTemp",
+    warn: 80,
   },
   rotor: {
     letter: "R",
     title: "Rotor speed sensor",
     hardware: "A3144 Hall-effect sensor with hub magnet",
-    role: "Counts rotor revolutions. Speed that drops while the fan is constant indicates drag or a failing generator.",
+    role: "Counts rotor revolutions. Speed that drops while the wind holds steady indicates drag or a failing generator.",
     specs: [
       ["Interface", "GPIO interrupt, one pulse per revolution"],
       ["Resolution", "1 RPM"],
@@ -74,13 +73,13 @@ export const SENSOR_PARTS = {
     letter: "W",
     title: "Anemometer",
     hardware: "Cup anemometer with reed-switch pulse output",
-    role: "Measures the air speed reaching the rotor, so output can be compared to what the wind should produce.",
+    role: "Measures the air speed reaching the rotor, after any wake from upwind turbines, so output can be compared to what the wind should produce.",
     specs: [
       ["Interface", "GPIO pulse counter"],
       ["Sample rate", "1 Hz"],
     ],
     unit: "m/s",
-    key: "wind",
+    key: "effectiveWind",
   },
 };
 

@@ -3,11 +3,8 @@
 // time stepping, turbulence, a Jensen wake model, and live grid dispatch.
 
 import { failureRisk, powerFromWind } from "../standalone/twinEngine.js";
-import { QNX_ZONE } from "./qnx/hardware.js";
-import { readQnxTelemetry } from "./qnx/telemetry.js";
 
-export const FIELD = { width: 3200, height: 1400 }; // metres
-export const FARM_WIDTH = 2400; // the QNX hardware zone fills the rest
+export const FIELD = { width: 2400, height: 1400 }; // metres
 export const ROTOR_DIAMETER_M = 120;
 const ROTOR_RADIUS_M = ROTOR_DIAMETER_M / 2;
 const WAKE_DECAY = 0.075; // Jensen wake expansion constant for onshore sites
@@ -30,19 +27,16 @@ export const DEFAULT_WEATHER = {
   temperature: 18,
 };
 
+// Sized for the three wired turbines (12.6 MW installed).
 export const DEFAULT_GRID = {
-  exportLimit: 20,
+  exportLimit: 10,
   batteryEnabled: true,
-  batteryCapacity: 20,
-  batteryRate: 5,
+  batteryCapacity: 8,
+  batteryRate: 2,
   batteryEfficiency: 0.9,
 };
 
-export function makeTurbine(x, y, existing = [], overrides = {}) {
-  const used = new Set(existing.map((turbine) => turbine.id));
-  let number = 1;
-  while (used.has(`T-${String(number).padStart(2, "0")}`)) number += 1;
-  const id = `T-${String(number).padStart(2, "0")}`;
+function makeTurbine(id, x, y, overrides = {}) {
   return {
     id,
     x,
@@ -53,40 +47,21 @@ export function makeTurbine(x, y, existing = [], overrides = {}) {
     daysSinceMaintenance: 90,
     fault: false,
     tripped: false,
-    kind: "farm",
     ...overrides,
   };
 }
 
+// The three turbines wired to the QNX base are the whole simulation. T-03 starts
+// worn so storms push it toward a trip.
 export function defaultLayout() {
-  // Two staggered rows about 5 rotor diameters apart along the westerly wind.
-  const positions = [
-    [350, 420], [1000, 470], [1650, 420], [2200, 470],
-    [350, 980], [1000, 930], [1650, 980],
+  return [
+    makeTurbine("T-01", 600, 330),
+    makeTurbine("T-02", 1300, 700, { daysSinceMaintenance: 240 }),
+    makeTurbine("T-03", 600, 1070, { vibration: 6.8, bearingTemp: 84, daysSinceMaintenance: 300 }),
   ];
-  const layout = [];
-  for (const [x, y] of positions) layout.push(makeTurbine(x, y, layout));
-  layout[2].vibration = 6.8;
-  layout[2].bearingTemp = 84;
-  layout[2].daysSinceMaintenance = 300;
-  layout[5].daysSinceMaintenance = 240;
-  return layout;
 }
 
-// The three physical bench turbines wired to the QNX base. They never respond to
-// the weather, wakes or grid; their readings come from qnx/telemetry.js.
-export function qnxLayout() {
-  return [330, 700, 1070].map((y, index) => ({
-    id: `Q-0${index + 1}`,
-    kind: "qnx",
-    x: QNX_ZONE.x + 210,
-    y,
-  }));
-}
-
-export const isQnx = (turbine) => turbine.kind === "qnx";
-
-export function initialState(turbines = [...defaultLayout(), ...qnxLayout()]) {
+export function initialState(turbines = defaultLayout()) {
   return {
     simHours: 0,
     gustNoise: 0,
@@ -161,22 +136,15 @@ export function step(state, weather, grid, dtHours, random = Math.random) {
   const wind = Math.max(0, weather.windSpeed * (1 + weather.turbulence * turbulenceNoise));
   const gust = Math.max(wind, weather.windSpeed * weather.gustFactor * (1 + 0.5 * weather.turbulence * gustNoise));
   const icing = weather.temperature <= 0;
-  const farmTurbines = state.turbines.filter((turbine) => !isQnx(turbine));
-  const deficits = wakeDeficits(farmTurbines, wind, weather.direction);
-  const deficitById = Object.fromEntries(farmTurbines.map((turbine, index) => [turbine.id, deficits[index]]));
+  const deficits = wakeDeficits(state.turbines, wind, weather.direction);
 
   const events = [];
   const readings = {};
   let gross = 0;
   let freeStream = 0;
   let atRisk = 0;
-  let qnxIndex = 0;
-  const turbines = state.turbines.map((turbine) => {
-    if (isQnx(turbine)) {
-      readings[turbine.id] = readQnxTelemetry(qnxIndex++, state.simHours);
-      return turbine;
-    }
-    const effectiveWind = wind * (1 - deficitById[turbine.id]);
+  const turbines = state.turbines.map((turbine, index) => {
+    const effectiveWind = wind * (1 - deficits[index]);
     const derate = icing ? ICING_DERATE : 1;
     const offline = turbine.fault || turbine.tripped;
     const power = offline ? 0 : powerFromWind(effectiveWind, turbine.ratedPower) * derate;
@@ -210,7 +178,7 @@ export function step(state, weather, grid, dtHours, random = Math.random) {
     atRisk += risk * power;
     readings[turbine.id] = {
       effectiveWind,
-      wakeDeficit: deficitById[turbine.id],
+      wakeDeficit: deficits[index],
       power,
       risk,
       liveVibration,
