@@ -582,7 +582,7 @@ function RecommendationPanel({ recommendations, onSelect }) {
 function TurbineDetail({ turbine, maintenanceWindow, selectedForecast }) {
   if (!turbine) {
     return (
-      <section className="panel flex min-h-[260px] items-center justify-center rounded-2xl p-6 text-sm text-slate-500">
+      <section id="turbine-detail" className="panel flex min-h-[260px] scroll-mt-4 items-center justify-center rounded-2xl p-6 text-sm text-slate-500">
         Select a turbine on the farm diagram to view its detail.
       </section>
     );
@@ -597,7 +597,7 @@ function TurbineDetail({ turbine, maintenanceWindow, selectedForecast }) {
     ["Gust severity", turbine.weighted_risk_components?.gust_severity],
   ];
   return (
-    <section className="panel rounded-2xl p-5 sm:p-6">
+    <section id="turbine-detail" className="panel scroll-mt-4 rounded-2xl p-5 sm:p-6">
       <PanelHeading
         eyebrow="Asset intelligence"
         title="Turbine detail"
@@ -935,6 +935,20 @@ export default function App() {
     setSelectedDetail(null);
   }, []);
 
+  // Clicking a node on the site layout also brings its Asset intelligence panel into view.
+  const selectFromMap = useCallback(
+    (id) => {
+      selectTurbine(id);
+      requestAnimationFrame(() => {
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        document
+          .getElementById("turbine-detail")
+          ?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      });
+    },
+    [selectTurbine],
+  );
+
   const runScenario = async () => {
     setIsRunning(true);
     setError("");
@@ -1136,7 +1150,7 @@ export default function App() {
         </section>
 
         <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,1.42fr)]">
-          <MapPanel turbines={current.turbines} selectedId={selectedId} onSelect={selectTurbine} />
+          <MapPanel turbines={current.turbines} selectedId={selectedId} onSelect={selectFromMap} />
           <GenerationChart forecast={current.forecast} capacity={overview.grid_export_capacity_mw} />
         </div>
 
