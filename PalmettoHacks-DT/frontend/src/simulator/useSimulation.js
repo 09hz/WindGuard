@@ -4,7 +4,9 @@ import {
   DEFAULT_WEATHER,
   defaultLayout,
   initialState,
+  isQnx,
   makeTurbine,
+  qnxLayout,
   step,
 } from "./engine.js";
 
@@ -84,12 +86,13 @@ export function useSimulation() {
   );
 
   const removeTurbine = useCallback(
-    (id) => updateTurbines((turbines) => turbines.filter((t) => t.id !== id)),
+    // The QNX rig always has its three wired turbines, so they can't be removed.
+    (id) => updateTurbines((turbines) => turbines.filter((t) => t.id !== id || isQnx(t))),
     [updateTurbines],
   );
 
   const reset = useCallback(
-    (turbines = defaultLayout()) => commit(step(initialState(turbines), weatherRef.current, gridRef.current, 1e-6)),
+    (turbines = [...defaultLayout(), ...qnxLayout()]) => commit(step(initialState(turbines), weatherRef.current, gridRef.current, 1e-6)),
     [commit],
   );
 

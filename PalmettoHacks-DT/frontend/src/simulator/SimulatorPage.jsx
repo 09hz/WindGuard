@@ -13,6 +13,7 @@ import {
 import TabNav from "../TabNav.jsx";
 import SiteCanvas from "./SiteCanvas.jsx";
 import { GridControls, SimulationControls, TurbineInspector, WeatherControls } from "./ControlPanel.jsx";
+import { isQnx } from "./engine.js";
 import { useSimulation } from "./useSimulation.js";
 
 function Readout({ icon: Icon, label, value, unit, detail, tone = "text-teal" }) {
@@ -80,12 +81,12 @@ export default function SimulatorPage() {
   const { farm } = snapshot;
 
   const stats = useMemo(() => {
-    const readings = Object.values(snapshot.readings);
-    const online = snapshot.turbines.filter((t) => !t.fault && !t.tripped).length;
-    const highRisk = readings.filter((reading) => reading.risk >= 0.65).length;
+    const farmTurbines = snapshot.turbines.filter((t) => !isQnx(t));
+    const online = farmTurbines.filter((t) => !t.fault && !t.tripped).length;
+    const highRisk = farmTurbines.filter((t) => snapshot.readings[t.id]?.risk >= 0.65).length;
     const wakeLoss = farm.freeStream > 0 ? 1 - farm.gross / farm.freeStream : 0;
-    const capacity = snapshot.turbines.reduce((total, t) => total + t.ratedPower, 0);
-    return { online, highRisk, wakeLoss, capacity };
+    const capacity = farmTurbines.reduce((total, t) => total + t.ratedPower, 0);
+    return { online, highRisk, wakeLoss, capacity, farmCount: farmTurbines.length };
   }, [snapshot, farm]);
 
   const cutOut = farm.wind >= 25;
@@ -117,7 +118,7 @@ export default function SimulatorPage() {
         </div>
 
         <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <Readout icon={Zap} label="Farm output" value={farm.gross.toFixed(1)} unit={`/ ${stats.capacity.toFixed(1)} MW`} detail={`${stats.online} of ${snapshot.turbines.length} turbines online`} />
+          <Readout icon={Zap} label="Farm output" value={farm.gross.toFixed(1)} unit={`/ ${stats.capacity.toFixed(1)} MW`} detail={`${stats.online} of ${stats.farmCount} turbines online`} />
           <Readout
             icon={Wind}
             label="Incoming wind"
